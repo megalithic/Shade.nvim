@@ -151,7 +151,7 @@ end
 
 local function shade_window(winid)
   local overlay = state.active_overlays[winid]
-  if overlay then
+  if overlay and api.nvim_win_is_valid(overlay.winid) then
     api.nvim_win_set_option(overlay.winid, "winblend", state.overlay_opacity)
     log("shade_window",
       ("[%d] : overlay %d ON (winblend: %d)"):format(winid, overlay.winid, state.overlay_opacity))
@@ -162,7 +162,7 @@ end
 
 local function unshade_window(winid)
   local overlay = state.active_overlays[winid]
-  if overlay then
+  if overlay and api.nvim_win_is_valid(winid) then
     api.nvim_win_set_option(overlay.winid, "winblend", 100)
     log("unshade_window",
       ("[%d] : overlay %d OFF (winblend: 100 [disabled])"):format(winid, overlay.winid))
@@ -187,7 +187,9 @@ end
 
 local function remove_all_overlays()
   for _, overlay in pairs(state.active_overlays) do
-    api.nvim_win_close(overlay.winid, true)
+      if not api.nvim_win_is_valid(overlay.winid) then
+        api.nvim_win_close(overlay.winid, true)
+      end
   end
   state.active_overlays = {}
 end
@@ -304,7 +306,9 @@ shade.event_listener = function(_, winid, _, _, _)
     if current_wincfg[m] ~= cached.wincfg[m] then
       log("event_listener: resized", winid)
       state.active_overlays[winid].wincfg = current_wincfg
-      api.nvim_win_set_config(cached.winid, filter_wininfo(current_wincfg))
+      if api.nvim_win_is_valid(cached.winid) then
+          api.nvim_win_set_config(cached.winid, filter_wininfo(current_wincfg))
+      end
       goto continue
     end
   end
@@ -318,7 +322,7 @@ shade.on_win_closed = function(event, winid)
   local overlay = state.active_overlays[winid]
   if overlay == nil then
     log(event, "no overlay to close")
-  else
+  elseif api.nvim_win_is_valid(overlay.winid) then
     api.nvim_win_close(overlay.winid, false)
     log(event, ("[%d] : overlay %d destroyed"):format(winid, overlay.winid))
     state.active_overlays[winid] = nil
@@ -419,6 +423,11 @@ M.toggle = function()
     print("on")
     state.active = true
   end
+end
+
+M.disable = function()
+  remove_all_overlays()
+  state.active = false
 end
 
 M.autocmd = function(event, winid)
