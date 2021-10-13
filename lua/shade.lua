@@ -175,10 +175,12 @@ end
 local function shade_tabpage(winid)
   winid = winid or api.nvim_get_current_win()
   for overlay_winid, _ in pairs(state.active_overlays) do
-    local diff_enabled = api.nvim_win_get_option(overlay_winid, 'diff')
-    if overlay_winid ~= winid and diff_enabled == false then
-      log("deactivating window", overlay_winid)
-      shade_window(overlay_winid)
+    if api.nvim_win_is_valid(overlay_winid) then
+      local diff_enabled = api.nvim_win_get_option(overlay_winid, 'diff')
+      if overlay_winid ~= winid and diff_enabled == false then
+        log("deactivating window", overlay_winid)
+        shade_window(overlay_winid)
+      end
     end
   end
 end
@@ -187,7 +189,7 @@ end
 
 local function remove_all_overlays()
   for _, overlay in pairs(state.active_overlays) do
-      if not api.nvim_win_is_valid(overlay.winid) then
+      if api.nvim_win_is_valid(overlay.winid) then
         api.nvim_win_close(overlay.winid, true)
       end
   end
